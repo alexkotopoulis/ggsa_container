@@ -1,5 +1,7 @@
 # Oracle Stream Analytics 26ai All-in-One Container
 
+IMPORTANT: This image is meant for local development, demos, and sandboxing. It is not tuned for production. This repository is not maintained or supported by Oracle.
+
 This repo builds a docker-compatible Oracle Linux 8 image that packages these components in one `linux/amd64` container:
 
 - Oracle Stream Analytics 26ai from `V1054826-01.zip`
@@ -7,7 +9,7 @@ This repo builds a docker-compatible Oracle Linux 8 image that packages these co
 - Apache Spark 4.0.1 with local master, worker, and history server
 - MySQL 8.0 as the OSA metadata store
 
-This image is meant for local development, demos, and sandboxing. It is not tuned for production.
+
 
 ## What the image does
 
