@@ -2,8 +2,13 @@
 # This script assumes that the command "docker" redirects to your actual container 
 # runtime (podman, rancher, etc)
 
-export HOST=ENTER_HOST_HERE
-export PASSWORD=ENTER_PASSWORD_HERE
+export HOST="${HOST:-ENTER_HOST_HERE}"
+export PASSWORD="${PASSWORD:-ENTER_PASSWORD_HERE}"
+export SPARK_WORKER_INSTANCES="${SPARK_WORKER_INSTANCES:-2}"
+export SPARK_WORKER_CORES="${SPARK_WORKER_CORES:-8}"
+export SPARK_WORKER_MEMORY="${SPARK_WORKER_MEMORY:-2g}"
+
+# Increase the Spark worker values above when running on a larger machine.
 docker run -d \
   --name ggsa-osa \
   --platform linux/amd64 \
@@ -30,5 +35,8 @@ docker run -d \
   -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
   -e SPARK_PUBLIC_DNS=$HOST \
+  -e SPARK_WORKER_INSTANCES=$SPARK_WORKER_INSTANCES \
+  -e SPARK_WORKER_CORES=$SPARK_WORKER_CORES \
+  -e SPARK_WORKER_MEMORY=$SPARK_WORKER_MEMORY \
   -e OSA_READY_TIMEOUT=600 \
   localhost/ggsa-osa:26ai

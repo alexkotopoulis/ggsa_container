@@ -65,7 +65,15 @@ export HOST=your-server-hostname
 export PASSWORD=your-password
 ```
 
-You can also edit the first two lines of [run.sh](/Users/alex/projects/ggsa_container/run.sh) directly if you prefer.
+If you want to give Spark more resources on a larger machine, you can also set:
+
+```bash
+export SPARK_WORKER_INSTANCES=2
+export SPARK_WORKER_CORES=8
+export SPARK_WORKER_MEMORY=2g
+```
+
+You can also edit the variable defaults at the top of [run.sh](/Users/alex/projects/ggsa_container/run.sh) directly if you prefer.
 
 Start the container:
 
@@ -155,16 +163,22 @@ These volumes preserve the MySQL data directory, Kafka data, Spark event logs, a
 
 ### Configuration knobs
 
-The current helper scripts expose only two user-facing settings directly in `run.sh`:
+The current helper scripts expose these user-facing settings directly in `run.sh`:
 
 - `HOST`: hostname used by browsers to reach OSA
 - `PASSWORD`: reused for the MySQL root account, MySQL OSA user, and OSA admin account
+- `SPARK_WORKER_INSTANCES`: number of Spark worker processes to start
+- `SPARK_WORKER_CORES`: cores assigned to each Spark worker
+- `SPARK_WORKER_MEMORY`: memory assigned to each Spark worker
 
 Example:
 
 ```bash
 HOST=phoenix254903.dev3sub3phx.databasede3phx.oraclevcn.com \
 PASSWORD=welcome1 \
+SPARK_WORKER_INSTANCES=2 \
+SPARK_WORKER_CORES=8 \
+SPARK_WORKER_MEMORY=2g \
 ./run.sh
 ```
 
@@ -204,6 +218,10 @@ docker run -d \
   -e OSA_ADMIN_USER=osaadmin \
   -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
+  -e SPARK_PUBLIC_DNS=$HOST \
+  -e SPARK_WORKER_INSTANCES=$SPARK_WORKER_INSTANCES \
+  -e SPARK_WORKER_CORES=$SPARK_WORKER_CORES \
+  -e SPARK_WORKER_MEMORY=$SPARK_WORKER_MEMORY \
   -e OSA_READY_TIMEOUT=600 \
   localhost/ggsa-osa:26ai
 ```
@@ -252,7 +270,7 @@ docker build --format docker --http-proxy=true --build-arg OSA_ARCHIVE=YourOSAAr
 
 - Kafka runs in KRaft mode, not ZooKeeper mode.
 - Spark runs one master, one history server, and two workers by default.
-- The default Spark worker settings are:
+- The default Spark worker settings are controlled through `run.sh` and passed as container environment variables:
   - `SPARK_WORKER_INSTANCES=2`
   - `SPARK_WORKER_CORES=8`
   - `SPARK_WORKER_MEMORY=2g`
