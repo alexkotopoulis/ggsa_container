@@ -141,7 +141,7 @@ PASSWORD=welcome1 \
 If you prefer not to use the helper scripts, the current build command is:
 
 ```bash
-docker build --format docker --http-proxy=true -t ggsa-osa:26ai .
+docker build --format docker --http-proxy=true -t localhost/ggsa-osa:26ai .
 ```
 
 The current run command is:
@@ -173,13 +173,13 @@ docker run -d \
   -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
   -e OSA_READY_TIMEOUT=600 \
-  ggsa-osa:26ai
+  localhost/ggsa-osa:26ai
 ```
 
 If you need a different OSA archive filename, build manually with:
 
 ```bash
-docker build --format docker --http-proxy=true --build-arg OSA_ARCHIVE=YourOSAArchive.zip -t ggsa-osa:26ai .
+docker build --format docker --http-proxy=true --build-arg OSA_ARCHIVE=YourOSAArchive.zip -t localhost/ggsa-osa:26ai .
 ```
 
 ## Implementation Notes

@@ -30,4 +30,4 @@ docker run -d \
   -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
   -e OSA_READY_TIMEOUT=600 \
-  ggsa-osa:26ai
+  localhost/ggsa-osa:26ai
