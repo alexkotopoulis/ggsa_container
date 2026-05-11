@@ -357,7 +357,7 @@ kafka_is_healthy() {
 render_spark_config() {
   local spark_master_opts
 
-  mkdir -p /var/lib/spark/work /var/lib/spark-events /var/log/spark
+  mkdir -p /var/lib/spark/work /var/lib/spark-events "${SPARK_HOME}/logs"
 
   spark_master_opts="-Dspark.master.rest.enabled=${SPARK_MASTER_REST_ENABLED} -Dspark.master.rest.port=${SPARK_MASTER_REST_PORT}"
   if [[ -n "${SPARK_MASTER_REST_HOST}" ]]; then
@@ -371,7 +371,7 @@ export SPARK_MASTER_PORT=${SPARK_MASTER_PORT}
 export SPARK_MASTER_WEBUI_PORT=${SPARK_MASTER_WEBUI_PORT}
 export SPARK_WORKER_WEBUI_PORT=${SPARK_WORKER_WEBUI_PORT}
 export SPARK_PUBLIC_DNS=${SPARK_PUBLIC_DNS}
-export SPARK_LOG_DIR=/var/log/spark
+export SPARK_LOG_DIR=${SPARK_HOME}/logs
 export SPARK_WORKER_INSTANCES=${SPARK_WORKER_INSTANCES}
 export SPARK_WORKER_CORES=${SPARK_WORKER_CORES}
 export SPARK_WORKER_MEMORY=${SPARK_WORKER_MEMORY}
@@ -404,6 +404,7 @@ render_osa_config() {
   local jdbc_url secured_db_password xml_db xml_user xml_password
   local osa_enable_ssl osa_ssl_fail_on_validations
   local ssl_certificate_password ssl_certificate_password_encrypted ssl_certificate_path
+  local runtime_logs_dir="${OSA_RUNTIME_DIR}/logs"
 
   # OSA derives the schema name by splitting on the last "/" in the JDBC URL.
   # Keep the URL path bare so MySQL schema detection does not include query params.
@@ -415,7 +416,17 @@ render_osa_config() {
   xml_user="$(xml_escape "${MYSQL_USER}")"
   xml_password="$(xml_escape "${secured_db_password}")"
 
-  mkdir -p "${OSA_RUNTIME_DIR}" "${OSA_RUNTIME_DIR}/logs" "${OSA_BASE}/certificate"
+  mkdir -p "${OSA_RUNTIME_DIR}" "${OSA_BASE}/certificate" "${OSA_BASE}/logs"
+
+  if [[ "${runtime_logs_dir}" != "${OSA_BASE}/logs" ]]; then
+    if [[ -d "${runtime_logs_dir}" && ! -L "${runtime_logs_dir}" ]]; then
+      cp -a "${runtime_logs_dir}/." "${OSA_BASE}/logs"/ 2>/dev/null || true
+      rm -rf "${runtime_logs_dir}"
+    else
+      rm -f "${runtime_logs_dir}"
+    fi
+    ln -s "${OSA_BASE}/logs" "${runtime_logs_dir}"
+  fi
 
   if [[ "${osa_enable_ssl}" == "true" ]]; then
     ssl_certificate_password="${OSA_SSL_CERT_PASSWORD:-${OSA_ADMIN_PASSWORD}}"
@@ -599,13 +610,13 @@ monitor_services() {
 }
 
 main() {
-  export OSA_BASE="${OSA_BASE:-/opt/osa/osa-base}"
+  export OSA_BASE="${OSA_BASE:-/u01/osa/osa-base}"
   export OSA_RUNTIME_DIR="${OSA_RUNTIME_DIR:-/tmp}"
   export APP_HOME="${APP_HOME:-${OSA_BASE}}"
   export DATA_HOME="${DATA_HOME:-${OSA_BASE}}"
   export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk}"
-  export SPARK_HOME="${SPARK_HOME:-/opt/spark}"
-  export KAFKA_HOME="${KAFKA_HOME:-/opt/kafka}"
+  export SPARK_HOME="${SPARK_HOME:-/u01/spark}"
+  export KAFKA_HOME="${KAFKA_HOME:-/u01/kafka}"
   export MYSQL_DATADIR="${MYSQL_DATADIR:-/var/lib/mysql}"
   export MYSQL_SOCKET="${MYSQL_SOCKET:-/var/lib/mysql/mysql.sock}"
   export MYSQL_PID_FILE="${MYSQL_PID_FILE:-/var/run/mysqld/mysqld.pid}"

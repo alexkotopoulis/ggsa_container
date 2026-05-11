@@ -11,10 +11,10 @@ ARG MYSQL80_REPO_RPM=https://repo.mysql.com/mysql80-community-release-el8.rpm
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
-    OSA_BASE=/opt/osa/osa-base \
+    OSA_BASE=/u01/osa/osa-base \
     OSA_RUNTIME_DIR=/tmp \
-    SPARK_HOME=/opt/spark \
-    KAFKA_HOME=/opt/kafka \
+    SPARK_HOME=/u01/spark \
+    KAFKA_HOME=/u01/kafka \
     MYSQL_DATADIR=/var/lib/mysql \
     MYSQL_SOCKET=/var/lib/mysql/mysql.sock \
     MYSQL_PID_FILE=/var/run/mysqld/mysqld.pid \
@@ -49,7 +49,7 @@ ENV LANG=C.UTF-8 \
     OSA_KAFKA_URL=localhost:9092 \
     OSA_SPARK_URL=localhost \
     OSA_SPARK_STANDALONE_CONSOLE_PORT=28080 \
-    PATH=/opt/kafka/bin:/opt/spark/bin:/opt/spark/sbin:/opt/osa/osa-base/bin:/usr/java/latest/bin:$PATH
+    PATH=/u01/kafka/bin:/u01/spark/bin:/u01/spark/sbin:/u01/osa/osa-base/bin:/usr/java/latest/bin:$PATH
 
 RUN dnf -y install \
       ca-certificates \
@@ -75,30 +75,29 @@ RUN dnf -y install \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
-RUN curl -fsSL "https://downloads.apache.org/kafka/${KAFKA_VERSION}/kafka_${KAFKA_SCALA_VERSION}-${KAFKA_VERSION}.tgz" -o /tmp/kafka.tgz \
- && tar -xzf /tmp/kafka.tgz -C /opt \
- && mv "/opt/kafka_${KAFKA_SCALA_VERSION}-${KAFKA_VERSION}" /opt/kafka \
+RUN mkdir -p /u01 \
+ && curl -fsSL "https://downloads.apache.org/kafka/${KAFKA_VERSION}/kafka_${KAFKA_SCALA_VERSION}-${KAFKA_VERSION}.tgz" -o /tmp/kafka.tgz \
+ && tar -xzf /tmp/kafka.tgz -C /u01 \
+ && mv "/u01/kafka_${KAFKA_SCALA_VERSION}-${KAFKA_VERSION}" /u01/kafka \
  && curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz" -o /tmp/spark.tgz \
- && tar -xzf /tmp/spark.tgz -C /opt \
- && mv "/opt/spark-${SPARK_VERSION}-bin-hadoop3" /opt/spark \
+ && tar -xzf /tmp/spark.tgz -C /u01 \
+ && mv "/u01/spark-${SPARK_VERSION}-bin-hadoop3" /u01/spark \
  && rm -f /tmp/kafka.tgz /tmp/spark.tgz
 
 COPY ${OSA_ARCHIVE} /tmp/osa.zip
 
-RUN unzip -q /tmp/osa.zip -d /opt \
- && mv /opt/OSA-26.1.0.0.0 /opt/osa \
+RUN unzip -q /tmp/osa.zip -d /u01 \
+ && mv /u01/OSA-26.1.0.0.0 /u01/osa \
  && rm -f /tmp/osa.zip \
- && chmod +x /opt/osa/osa-base/bin/*.sh \
+ && chmod +x /u01/osa/osa-base/bin/*.sh \
  && mkdir -p \
       /etc/kafka \
       /var/lib/kafka/data \
+      /var/log/mysql \
+      /var/run/mysqld \
       /u02 \
       /var/lib/spark/work \
       /var/lib/spark-events \
-      /var/log/kafka \
-      /var/log/mysql \
-      /var/log/spark \
-      /var/run/mysqld \
       /u01/app/osa/deployedpipelines \
       /tmp/coh_cache \
  && chown -R mysql:mysql /var/lib/mysql /var/run/mysqld /var/log/mysql
@@ -107,7 +106,7 @@ COPY container/entrypoint.sh /usr/local/bin/ggsa-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/ggsa-entrypoint.sh
 
-WORKDIR /opt/osa/osa-base
+WORKDIR /u01/osa/osa-base
 
 VOLUME ["/var/lib/mysql", "/var/lib/kafka/data", "/var/lib/spark-events", "/u01/app/osa/deployedpipelines"]
 

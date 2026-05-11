@@ -1,4 +1,9 @@
-export HOST=phoenix254903.dev3sub3phx.databasede3phx.oraclevcn.com 
+# Script to create container from existing image created through build.sh
+# This script assumes that the command "docker" redirects to your actual container 
+# runtime (podman, rancher, etc)
+
+export HOST=ENTER_HOST_HERE
+export PASSWORD=ENTER_PASSWORD_HERE
 docker run -d \
   --name ggsa-osa \
   --platform linux/amd64 \
@@ -17,12 +22,12 @@ docker run -d \
   -v ggsa-kafka:/var/lib/kafka/data \
   -v ggsa-spark-events:/var/lib/spark-events \
   -v ggsa-osa-files:/u01/app/osa/deployedpipelines \
-  -e MYSQL_ROOT_PASSWORD=oracle \
+  -e MYSQL_ROOT_PASSWORD=$PASSWORD \
   -e MYSQL_DATABASE=osa \
   -e MYSQL_USER=osa \
-  -e MYSQL_PASSWORD=welcome1 \
+  -e MYSQL_PASSWORD=$PASSWORD \
   -e OSA_ADMIN_USER=osaadmin \
-  -e OSA_ADMIN_PASSWORD=welcome1 \
+  -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
   -e OSA_READY_TIMEOUT=600 \
   ggsa-osa:26ai

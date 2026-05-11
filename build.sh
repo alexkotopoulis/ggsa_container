@@ -1,4 +1,7 @@
-export ARGS=--preserve-env=HTTP_PROXY,HTTPS_PROXY,NO_PROXY,http_proxy,https_proxy,no_proxy # Arge for SUDO to pass on proxy settings
+# Script to create image and volumes from Dockerfile
+# This script assumes that the command "docker" redirects to your actual container 
+# runtime (podman, rancher, etc)
+
 docker build --format docker --http-proxy=true -t ggsa-osa:26ai .
 
 docker volume create ggsa-mysql

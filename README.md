@@ -1,69 +1,150 @@
 # Oracle Stream Analytics 26ai All-in-One Container
 
-IMPORTANT: This image is meant for local development, demos, and sandboxing. It is not tuned for production. This repository is not maintained or supported by Oracle.
+This repository builds a single `linux/amd64` Oracle Linux 8 container that bundles:
 
-This repo builds a docker-compatible Oracle Linux 8 image that packages these components in one `linux/amd64` container:
-
-- Oracle Stream Analytics 26ai from `V1054826-01.zip`
+- Oracle Stream Analytics 26ai from an OSA distribution archive downloaded from `edelivery.oracle.com`
 - Apache Kafka 4.1.x in single-node KRaft mode
-- Apache Spark 4.0.1 with local master, worker, and history server
+- Apache Spark 4.0.1 with standalone master, workers, and history server
 - MySQL 8.0 as the OSA metadata store
 
+This project is intended for local development, demos, and sandboxing. It is not tuned for production, and it is not maintained or supported by Oracle.
 
+## Instructions
 
-## What the image does
+### What you need
 
-- Uses `oraclelinux:8` as the base image.
-- Installs JDK 21, which OSA 26ai requires.
-- Unpacks the local OSA distribution already present in this repo.
-- Installs Kafka 4.1.x and Spark 4.0.1.
-- Installs MySQL 8.0, initializes the OSA schema, and seeds the default OSA admin account.
-- Starts MySQL, Kafka, Spark, and OSA in a single container entrypoint.
-- Generates the OSA datasource password at runtime with `osa-secure-tool.sh`, following Oracle's secure-password flow instead of writing `PLAINTEXT:` into `osa-datasource.xml`.
-- Generates a self-signed PKCS#12 certificate at startup and enables the documented HTTPS OSA entrypoint by default.
-- Leaves the shipped OSA product tree under `/opt/osa` unmodified at image build time and writes mutable runtime config under `/tmp`.
+- A Docker-compatible container CLI:
+  - Docker, or
+  - Podman, including rootful Podman on Linux
+- An OSA distribution archive in the repository root
+  - `V1054826-01.zip` is one example filename
+  - patch releases may use a different filename
+- Enough memory for the full stack. OSA, Spark, Kafka, and MySQL together are heavy.
 
-## Files
+### Repository layout
 
-- `Dockerfile`: the image definition
-- `container/entrypoint.sh`: starts and wires together all services
-- `V1054826-01.zip`: local OSA installer bundle used during build
+- `Dockerfile`: image definition
+- `build.sh`: builds the image and creates the named volumes
+- `run.sh`: recreates and starts the container with persistent storage
+- `container/entrypoint.sh`: launches and wires together MySQL, Kafka, Spark, and OSA
 
-## Clone the repo
+### Clone the repository
 
-Use HTTPS unless your local machine already has a GitHub SSH key configured and added to your GitHub account:
+Use HTTPS:
 
 ```bash
 git clone https://github.com/alexkotopoulis/ggsa_container.git
+cd ggsa_container
 ```
 
-If you prefer SSH, confirm that `ssh -T git@github.com` succeeds first. A `Permission denied (publickey)` response means the repository is fine, but the current machine is not presenting a GitHub-authorized SSH key yet.
-
-## Build the image
-
-This image has been validated on Apple Silicon with Rancher Desktop using the Docker-compatible CLI. Build it as `linux/amd64`:
+Or SSH:
 
 ```bash
-docker buildx build --platform linux/amd64 -t ggsa-osa:26ai --load .
+git clone git@github.com:alexkotopoulis/ggsa_container.git
+cd ggsa_container
 ```
 
-If Rancher Desktop does not place `docker` on your `PATH`, use its bundled CLI directly:
+### Quick start on Linux
+
+The helper scripts assume a working `docker` command. That may be Docker itself, or another runtime if your environment redirects `docker` to it.
+
+Build the image:
 
 ```bash
-~/.rd/bin/docker buildx build --platform linux/amd64 -t ggsa-osa:26ai --load .
+./build.sh
 ```
 
-If you prefer a different tag:
+If your OSA archive does not use the example filename from the `Dockerfile`, either rename it before building or run the build manually with a matching `--build-arg`.
+
+If you are behind an HTTP proxy, export `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` before running `build.sh`.
+
+Before starting the container, set the hostname and password used by `run.sh`:
 
 ```bash
-docker buildx build --platform linux/amd64 -t my-ggsa-stack:latest --load .
+export HOST=your-server-hostname
+export PASSWORD=your-password
 ```
 
-## Run the container
+You can also edit the first two lines of [run.sh](/Users/alex/projects/ggsa_container/run.sh) directly if you prefer.
 
-On Apple Silicon with Rancher Desktop, amd64 startup is slow enough that OSA should be given a longer readiness window. The example below uses host port `19443` for the OSA HTTPS UI and a dedicated `28080-28083` Spark UI port block to avoid collisions with other local Spark services that often use `8080-8082`.
+Start the container:
 
-This example keeps everything ephemeral:
+```bash
+./run.sh
+```
+
+`run.sh` publishes the OSA HTTPS UI directly on host port `9443`. Live Output in the pipeline editor only works when the OSA UI is mapped to container port `9443`.
+
+### Default access points
+
+With the current `run.sh` settings:
+
+- OSA UI: `https://<HOST>:9443/osa/index.html`
+- OSA login: `osaadmin` / `<PASSWORD>`
+- Spark master UI: `http://<HOST>:28080`
+- Spark worker UIs: `http://<HOST>:28081` and `http://<HOST>:28082`
+- Spark history server: `http://<HOST>:28083`
+- Spark master endpoint: `spark://<HOST>:7077`
+- Spark REST submission endpoint: `http://<HOST>:6066/v1/submissions/create`
+- Spark application UI: `http://<HOST>:4040` for the first active application
+- Kafka bootstrap server: `<HOST>:9092`
+- MySQL: `<HOST>:3306`, database `osa`
+
+The OSA UI uses a self-signed certificate by default, so your browser will usually show a certificate warning on first access.
+
+### Common operations
+
+Follow logs:
+
+```bash
+docker logs -f ggsa-osa
+```
+
+Open a shell in the container:
+
+```bash
+docker exec -it ggsa-osa bash
+```
+
+Stop and remove the container:
+
+```bash
+docker rm -f ggsa-osa
+```
+
+The named volumes created by `build.sh` are:
+
+- `ggsa-mysql`
+- `ggsa-kafka`
+- `ggsa-spark-events`
+- `ggsa-osa-files`
+
+These volumes preserve the MySQL data directory, Kafka data, Spark event logs, and deployed OSA pipeline files across container recreation.
+
+### Configuration knobs
+
+The current helper scripts expose only two user-facing settings directly in `run.sh`:
+
+- `HOST`: hostname used by browsers to reach OSA
+- `PASSWORD`: reused for the MySQL root account, MySQL OSA user, and OSA admin account
+
+Example:
+
+```bash
+HOST=phoenix254903.dev3sub3phx.databasede3phx.oraclevcn.com \
+PASSWORD=welcome1 \
+./run.sh
+```
+
+### Manual build and run commands
+
+If you prefer not to use the helper scripts, the current build command is:
+
+```bash
+docker build --format docker --http-proxy=true -t ggsa-osa:26ai .
+```
+
+The current run command is:
 
 ```bash
 docker run -d \
@@ -77,140 +158,100 @@ docker run -d \
   -p 28081:28081 \
   -p 28082:28082 \
   -p 28083:28083 \
-  -p 19443:9443 \
-  -p 19080:9080 \
-  -p 9092:9092 \
-  -e MYSQL_ROOT_PASSWORD=oracle \
-  -e MYSQL_DATABASE=osa \
-  -e MYSQL_USER=osa \
-  -e MYSQL_PASSWORD=welcome1 \
-  -e OSA_ADMIN_USER=osaadmin \
-  -e OSA_ADMIN_PASSWORD=welcome1 \
-  -e OSA_PUBLIC_HOST=localhost \
-  -e OSA_READY_TIMEOUT=600 \
-  ggsa-osa:26ai
-```
-
-This example adds persistence:
-
-```bash
-docker run -d \
-  --name ggsa-osa \
-  --platform linux/amd64 \
-  -p 3306:3306 \
-  -p 4040-4050:4040-4050 \
-  -p 6066:6066 \
-  -p 7077:7077 \
-  -p 28080:28080 \
-  -p 28081:28081 \
-  -p 28082:28082 \
-  -p 28083:28083 \
-  -p 19443:9443 \
+  -p 9443:9443 \
   -p 19080:9080 \
   -p 9092:9092 \
   -v ggsa-mysql:/var/lib/mysql \
   -v ggsa-kafka:/var/lib/kafka/data \
   -v ggsa-spark-events:/var/lib/spark-events \
   -v ggsa-osa-files:/u01/app/osa/deployedpipelines \
-  -e MYSQL_ROOT_PASSWORD=oracle \
+  -e MYSQL_ROOT_PASSWORD=$PASSWORD \
   -e MYSQL_DATABASE=osa \
   -e MYSQL_USER=osa \
-  -e MYSQL_PASSWORD=welcome1 \
+  -e MYSQL_PASSWORD=$PASSWORD \
   -e OSA_ADMIN_USER=osaadmin \
-  -e OSA_ADMIN_PASSWORD=welcome1 \
-  -e OSA_PUBLIC_HOST=localhost \
+  -e OSA_ADMIN_PASSWORD=$PASSWORD \
+  -e OSA_PUBLIC_HOST=$HOST \
   -e OSA_READY_TIMEOUT=600 \
   ggsa-osa:26ai
 ```
 
-If you prefer Podman, use the same flags with `podman` in place of `docker`.
+If you need a different OSA archive filename, build manually with:
 
-## Default access points
+```bash
+docker build --format docker --http-proxy=true --build-arg OSA_ARCHIVE=YourOSAArchive.zip -t ggsa-osa:26ai .
+```
 
-- OSA UI: `https://localhost:19443/osa/index.html` when using the Rancher Desktop example above
-- OSA HTTP fallback: `http://localhost:19080/osa/index.html` only if you explicitly set `OSA_ENABLE_SSL=false`
-- OSA login: `osaadmin` / `welcome1` unless you override `OSA_ADMIN_PASSWORD`
-- Kafka bootstrap server: `localhost:9092`
-- Spark master endpoint: `spark://localhost:7077`
-- Spark REST submission endpoint: `http://localhost:6066/v1/submissions/create`
-- Spark master UI: `http://localhost:28080`
-- Spark worker UIs: `http://localhost:28081` and `http://localhost:28082` for the default two-worker setup
-- Spark application detail UI: `http://localhost:4040` for the first running app, then `4041`, `4042`, and so on if additional app UIs are opened
-- Spark history server: `http://localhost:28083`
-- MySQL: `localhost:3306`, database `osa`
+## Implementation Notes
 
-## Environment variables
-
-- `MYSQL_ROOT_PASSWORD`: required at runtime, defaults to `oracle`
-- `MYSQL_DATABASE`: defaults to `osa`
-- `MYSQL_USER`: defaults to `osa`
-- `MYSQL_PASSWORD`: required at runtime, defaults to `welcome1`
-- `OSA_ADMIN_USER`: defaults to `osaadmin`
-- `OSA_ADMIN_PASSWORD`: required at runtime, defaults to `welcome1`
-- `OSA_ENABLE_SSL`: defaults to `true`; set to `false` only if you intentionally want the non-documented HTTP fallback
-- `OSA_SSL_CERT_PASSWORD`: defaults to the same value as `OSA_ADMIN_PASSWORD`
-- `OSA_SSL_FAIL_ON_VALIDATIONS`: defaults to `false` so the generated self-signed demo certificate is accepted at startup
-- `OSA_PUBLIC_HOST`: host name written into the OSA UI config, defaults to `localhost`
-- `OSA_READY_TIMEOUT`: OSA boot wait in seconds, defaults to `600`
-- `OSA_LOAD_SAMPLES`: set to `true` to let OSA load sample content on startup
-- `KAFKA_ADVERTISED_LISTENERS`: defaults to `PLAINTEXT://localhost:9092`
-- `SPARK_MASTER_REST_ENABLED`: defaults to `true`
-- `SPARK_MASTER_REST_PORT`: defaults to `6066`
-- `SPARK_MASTER_REST_HOST`: optional override for the Spark REST endpoint host advertised by the master
-- `OSA_RUNTIME_DIR`: defaults to `/tmp` and stores generated OSA runtime config outside the shipped product tree
-- `SPARK_MASTER_WEBUI_PORT`: defaults to `28080`
-- `SPARK_PUBLIC_DNS`: defaults to the same host name as `OSA_PUBLIC_HOST` and is used in Spark master/worker links
-- `SPARK_WORKER_WEBUI_PORT`: defaults to `28081`; additional workers increment from that base port
-- `SPARK_WORKER_INSTANCES`: defaults to `2` and controls how many Spark workers are started automatically with the container
-- `SPARK_WORKER_CORES`: defaults to `8` for each Spark worker started from this image configuration
-- `SPARK_WORKER_MEMORY`: defaults to `2g` for each Spark worker started from this image configuration
-- `SPARK_WORKER_OPTS`: defaults to Spark executor log rolling settings suitable for container logs
-- `SPARK_HISTORY_PORT`: defaults to `28083`
-
-## Notes on the implementation
+### Overall design
 
 - The image is intentionally single-container and single-node.
+- The stack runs MySQL, Kafka, Spark, and OSA in one container via `container/entrypoint.sh`.
+- The image targets `linux/amd64`.
+
+### Build choices
+
+- The image uses `oraclelinux:8` as its base.
+- JDK 21 is installed because OSA 26ai requires it.
+- Kafka 4.1.x and Spark 4.0.1 are downloaded during the image build.
+- MySQL 8.0 is installed in the image and initialized on first container start.
+- The helper build script runs `docker build --format docker`.
+- The Dockerfile default `OSA_ARCHIVE` value is an example filename. If your downloaded archive has a different name, rename it or build manually with `--build-arg OSA_ARCHIVE=...`.
+
+### Runtime configuration
+
+- OSA, Kafka, and Spark are installed under `/u01` for a more conventional Oracle-style layout.
+- Mutable OSA runtime configuration is still generated under `/tmp`.
+- OSA is started with Oracle's supported `--extFolder` mechanism, using `/tmp` as the runtime overlay.
+- The runtime overlay `logs` path is linked back to `${OSA_BASE}/logs`, so the OSA app log stays under the familiar `osa-base/logs` directory.
+- `osa-datasource.xml` is generated at startup instead of baking environment-specific values into the image.
+- The datasource password is generated with `/u01/osa/osa-base/bin/osa-secure-tool.sh`.
+- OSA creates or reuses its AES key at `/u01/osa/osa-base/etc/osa_aes.key`.
+- A self-signed PKCS#12 certificate is generated at startup and SSL is enabled by default.
+
+### OSA UI access
+
+- `OSA_PUBLIC_HOST` controls the browser-visible host used by the UI and certificate defaults.
+- `run.sh` publishes the OSA HTTPS UI on host port `9443`.
+- Live Output in the pipeline editor only works when the OSA UI is mapped to container port `9443`.
+
+### Spark and Kafka behavior
+
 - Kafka runs in KRaft mode, not ZooKeeper mode.
-- Spark runs one master, one history server, and the configured standalone workers inside the container.
-- Publish worker UI ports if you want Spark master log links to be clickable from the host browser; for the default two-worker setup that means `28081` and `28082`.
-- Publish the Spark application UI port range too if you want the direct “Application Detail UI” links from the Spark master to open from the host browser; the default range in this repo is `4040-4050`.
-- OSA is wired to MySQL by generating `osa-datasource.xml` at startup.
-- OSA runtime config is generated under `/tmp` and passed through Oracle's supported `--extFolder` startup path.
-- The datasource password in `osa-datasource.xml` is generated at runtime with `/opt/osa/osa-base/bin/osa-secure-tool.sh`.
-- OSA creates or reuses its AES key at `/opt/osa/osa-base/etc/osa_aes.key` for that encrypted datasource password.
-- The container generates a self-signed PKCS#12 certificate at startup and writes its encrypted password into `${OSA_RUNTIME_DIR}/ssl.conf`.
-- The built image does not edit OSA files under `/opt/osa`; any runtime API-server datasource sync is derived from `osa-datasource.xml` in `OSA_RUNTIME_DIR`.
-- The generated self-signed certificate is allowed for local startup by setting `OSA_SERVER_CRT_FAIL_ON_VALIDATIONS=false`.
-- The default browser entrypoint is the HTTPS UI under `/osa/index.html` on port `9443`.
-- The OSA admin password is synchronized into the seeded MySQL schema on container startup.
+- Spark runs one master, one history server, and two workers by default.
+- The default Spark worker settings are:
+  - `SPARK_WORKER_INSTANCES=2`
+  - `SPARK_WORKER_CORES=8`
+  - `SPARK_WORKER_MEMORY=2g`
+- Spark REST submission is enabled by default.
+- Kafka topic auto-creation is enabled in the generated Kafka config.
 
-## Logs and troubleshooting
+### Persistence
 
-Watch the container orchestrator logs:
+- MySQL data is stored in `ggsa-mysql`
+- Kafka data is stored in `ggsa-kafka`
+- Spark event logs are stored in `ggsa-spark-events`
+- Deployed OSA pipeline files are stored in `ggsa-osa-files`
 
-```bash
-docker logs -f ggsa-osa
-```
+### Logs and troubleshooting
 
-Useful in-container logs:
+Useful runtime logs:
 
-- OSA app log: `/tmp/logs/osa-api-server.log`
-- OSA launcher log: `/opt/osa/osa-base/logs/osa.log`
-- OSA runtime overlay dir: `/tmp`
-- OSA AES key used by `osa-secure-tool.sh`: `/opt/osa/osa-base/etc/osa_aes.key`
-- OSA SSL config: `/tmp/ssl.conf`
+- OSA app log: `/u01/osa/osa-base/logs/osa-api-server.log`
+- OSA launcher log: `/u01/osa/osa-base/logs/osa.log`
 - MySQL log: `/var/log/mysql/error.log`
-- Spark logs: `/var/log/spark`
-- Kafka logs: `/opt/kafka/logs`
+- Spark logs: `/u01/spark/logs`
+- Kafka logs: `/u01/kafka/logs`
 
-Open a shell:
+If OSA seems up but the UI still does not work correctly, check:
 
-```bash
-docker exec -it ggsa-osa bash
-```
+- the container logs with `docker logs -f ggsa-osa`
+- the browser-visible hostname passed through `HOST`
+- that the OSA UI is being accessed on host port `9443`
+- whether the OSA UI is still mapped to container port `9443`
 
-## Validation status
+### Validation history
 
-- Validated on Apple Silicon with Rancher Desktop using `docker buildx build --platform linux/amd64 --load`
-- Validated runtime path: `docker run ... -p 19443:9443 -p 28080:28080 -p 28081:28081 -p 28082:28082 -p 28083:28083 -e OSA_PUBLIC_HOST=localhost -e OSA_READY_TIMEOUT=600 ggsa-osa:26ai`
-- Confirmed browser entrypoint: `https://localhost:19443/osa/index.html`
+- The image has been exercised on Apple Silicon with Rancher Desktop using an amd64 build.
+- The helper scripts in this repository are aimed at Linux environments with a Docker-compatible CLI.
