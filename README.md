@@ -133,6 +133,12 @@ Besides `build.sh` and `run.sh`, the repository also includes a few small conven
 ./kafka_listen.sh <topic-name>
 ```
 
+- `docker_rmall.sh`
+  - helper for cleaning up the local container environment
+  - stops and removes the `ggsa-osa` container
+  - prunes unused Docker volumes
+  - attempts to remove the local `localhost/ggsa-osa:26ai` image
+
 These helper scripts assume:
 
 - the container name is `ggsa-osa`
