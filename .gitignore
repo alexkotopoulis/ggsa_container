@@ -25,3 +25,5 @@ spark_conf/spark-defaults.conf
 spark_conf/spark-env.sh
 spark_conf/spark-env.sh.template
 spark_conf/workers.template
+run_alex.sh
+git.sh
