@@ -112,6 +112,32 @@ Stop and remove the container:
 docker rm -f ggsa-osa
 ```
 
+### Helper scripts
+
+Besides `build.sh` and `run.sh`, the repository also includes a few small convenience scripts for working with a running container:
+
+- `logs.sh`
+  - follows the container logs
+  - equivalent to `docker logs --follow ggsa-osa`
+- `dsh.sh`
+  - opens an interactive shell in the container
+  - equivalent to `docker exec -it ggsa-osa bash`
+- `kafka_topics.sh`
+  - lists Kafka topics from inside the container
+  - equivalent to `docker exec ggsa-osa /u01/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list`
+- `kafka_listen.sh`
+  - consumes messages from a Kafka topic inside the container
+  - usage:
+
+```bash
+./kafka_listen.sh <topic-name>
+```
+
+These helper scripts assume:
+
+- the container name is `ggsa-osa`
+- the command `docker` works in your environment
+
 The named volumes created by `build.sh` are:
 
 - `ggsa-mysql`
