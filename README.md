@@ -29,6 +29,16 @@ This repo builds a docker-compatible Oracle Linux 8 image that packages these co
 - `container/entrypoint.sh`: starts and wires together all services
 - `V1054826-01.zip`: local OSA installer bundle used during build
 
+## Clone the repo
+
+Use HTTPS unless your local machine already has a GitHub SSH key configured and added to your GitHub account:
+
+```bash
+git clone https://github.com/alexkotopoulis/ggsa_container.git
+```
+
+If you prefer SSH, confirm that `ssh -T git@github.com` succeeds first. A `Permission denied (publickey)` response means the repository is fine, but the current machine is not presenting a GitHub-authorized SSH key yet.
+
 ## Build the image
 
 This image has been validated on Apple Silicon with Rancher Desktop using the Docker-compatible CLI. Build it as `linux/amd64`:
