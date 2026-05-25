@@ -301,6 +301,8 @@ If OSA seems up but the UI still does not work correctly, check:
 - that the OSA UI is being accessed on host port `9443`
 - whether the OSA UI is still mapped to container port `9443`
 
+It is not possible to use external Kafka clients with the Kafka broker on the VM, as it is using localhost:9092 as the advertised listener; any access from outside the VM will try to use localhost. This is configured in /etc/kafka/server.properties.
+
 ### Validation history
 
 - The image has been exercised on Apple Silicon with Rancher Desktop using an amd64 build.
