@@ -65,6 +65,14 @@ export HOST=your-server-hostname
 export PASSWORD=your-password
 ```
 
+If remote Kafka clients should connect through a specific DNS name, you can optionally set:
+
+```bash
+export KAFKA_EXTERNAL_FQDN=kafka.your-domain.example
+```
+
+If `KAFKA_EXTERNAL_FQDN` is not set, `run.sh` reuses `HOST` for the external Kafka listener on port `9094`.
+
 If you want to give Spark more resources on a larger machine, you can also set:
 
 ```bash
@@ -95,7 +103,8 @@ With the current `run.sh` settings:
 - Spark master endpoint: `spark://<HOST>:7077`
 - Spark REST submission endpoint: `http://<HOST>:6066/v1/submissions/create`
 - Spark application UI: `http://<HOST>:4040` for the first active application
-- Kafka bootstrap server: `<HOST>:9092`
+- Kafka bootstrap server on the Docker host: `localhost:9092`
+- Kafka bootstrap server for remote clients: `<KAFKA_EXTERNAL_FQDN>:9094` (defaults to `<HOST>:9094` in `run.sh`)
 - MySQL: `<HOST>:3306`, database `osa`
 
 The OSA UI uses a self-signed certificate by default, so your browser will usually show a certificate warning on first access.
@@ -207,6 +216,7 @@ docker run -d \
   -p 9443:9443 \
   -p 19080:9080 \
   -p 9092:9092 \
+  -p 9094:9094 \
   -v ggsa-mysql:/var/lib/mysql \
   -v ggsa-kafka:/var/lib/kafka/data \
   -v ggsa-spark-events:/var/lib/spark-events \
@@ -218,6 +228,7 @@ docker run -d \
   -e OSA_ADMIN_USER=osaadmin \
   -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
+  -e KAFKA_EXTERNAL_FQDN=${KAFKA_EXTERNAL_FQDN:-$HOST} \
   -e SPARK_PUBLIC_DNS=$HOST \
   -e SPARK_WORKER_INSTANCES=$SPARK_WORKER_INSTANCES \
   -e SPARK_WORKER_CORES=$SPARK_WORKER_CORES \
@@ -269,6 +280,9 @@ docker build --format docker --http-proxy=true --build-arg OSA_ARCHIVE=YourOSAAr
 ### Spark and Kafka behavior
 
 - Kafka runs in KRaft mode, not ZooKeeper mode.
+- Kafka exposes two broker listeners by default:
+  - `LOCAL://localhost:9092` for clients on the Docker host
+  - `EXTERNAL://<KAFKA_EXTERNAL_FQDN>:9094` for remote clients
 - Spark runs one master, one history server, and two workers by default.
 - The default Spark worker settings are controlled through `run.sh` and passed as container environment variables:
   - `SPARK_WORKER_INSTANCES=2`
@@ -301,7 +315,7 @@ If OSA seems up but the UI still does not work correctly, check:
 - that the OSA UI is being accessed on host port `9443`
 - whether the OSA UI is still mapped to container port `9443`
 
-It is not possible to use external Kafka clients with the Kafka broker on the VM, as it is using localhost:9092 as the advertised listener; any access from outside the VM will try to use localhost. This is configured in /etc/kafka/server.properties.
+To expose Kafka to remote clients, publish port `9094` in `docker run` and set `KAFKA_EXTERNAL_FQDN` to a DNS name that those clients can resolve back to the Docker host. Port `9092` remains advertised as `localhost` for local clients on the Docker host.
 
 ### Validation history
 

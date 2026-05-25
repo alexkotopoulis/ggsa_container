@@ -285,10 +285,10 @@ process.roles=broker,controller
 node.id=1
 controller.quorum.voters=1@localhost:${KAFKA_CONTROLLER_PORT}
 controller.listener.names=CONTROLLER
-listeners=PLAINTEXT://0.0.0.0:${KAFKA_BROKER_PORT},CONTROLLER://0.0.0.0:${KAFKA_CONTROLLER_PORT}
+listeners=LOCAL://0.0.0.0:${KAFKA_BROKER_PORT},EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_BROKER_PORT},CONTROLLER://0.0.0.0:${KAFKA_CONTROLLER_PORT}
 advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}
-listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-inter.broker.listener.name=PLAINTEXT
+listener.security.protocol.map=CONTROLLER:PLAINTEXT,LOCAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+inter.broker.listener.name=LOCAL
 num.partitions=3
 offsets.topic.replication.factor=1
 transaction.state.log.replication.factor=1
@@ -636,8 +636,10 @@ main() {
   export OSA_API_SERVER_SPORT="${OSA_API_SERVER_SPORT:-9443}"
   export OSA_LOAD_SAMPLES="${OSA_LOAD_SAMPLES:-false}"
   export KAFKA_BROKER_PORT="${KAFKA_BROKER_PORT:-9092}"
+  export KAFKA_EXTERNAL_BROKER_PORT="${KAFKA_EXTERNAL_BROKER_PORT:-9094}"
   export KAFKA_CONTROLLER_PORT="${KAFKA_CONTROLLER_PORT:-9093}"
-  export KAFKA_ADVERTISED_LISTENERS="${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://localhost:${KAFKA_BROKER_PORT}}"
+  export KAFKA_EXTERNAL_FQDN="${KAFKA_EXTERNAL_FQDN:-${OSA_PUBLIC_HOST}}"
+  export KAFKA_ADVERTISED_LISTENERS="${KAFKA_ADVERTISED_LISTENERS:-LOCAL://localhost:${KAFKA_BROKER_PORT},EXTERNAL://${KAFKA_EXTERNAL_FQDN}:${KAFKA_EXTERNAL_BROKER_PORT}}"
   export SPARK_MASTER_HOST="${SPARK_MASTER_HOST:-localhost}"
   export SPARK_MASTER_PORT="${SPARK_MASTER_PORT:-7077}"
   export SPARK_MASTER_REST_ENABLED="${SPARK_MASTER_REST_ENABLED:-true}"
@@ -679,7 +681,7 @@ main() {
   if [[ "${SPARK_MASTER_REST_ENABLED,,}" == "true" ]]; then
     log "Spark REST submissions: http://${OSA_PUBLIC_HOST}:${SPARK_MASTER_REST_PORT}/v1/submissions/create"
   fi
-  log "Kafka bootstrap: ${KAFKA_ADVERTISED_LISTENERS#PLAINTEXT://}"
+  log "Kafka advertised listeners: ${KAFKA_ADVERTISED_LISTENERS}"
   log "MySQL database: ${MYSQL_DATABASE} on port ${MYSQL_TCP_PORT}"
 
   monitor_services

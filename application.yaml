@@ -1,0 +1,60 @@
+server:
+  port: ${OSA_API_SERVER_PORT}
+  host: "0.0.0.0"
+  static:
+    path:
+      welcome: login.html
+  executor-service:
+    core-pool-size: 200
+    max-pool-size: 400
+  worker-count: 8
+
+metrics:
+  enabled:  false
+
+openapi:
+  web-context: /osa-openapi
+  ui:
+    web-context: /osa-openapiui
+
+cors:
+  enabled: true
+  paths:
+    - path-pattern: "/osa/services/v0.1/*"
+      allow-methods: [ "GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE", "PATCH" ]
+      allow-credentials: true
+      allow-origins: [ "*" ]
+      allow-headers: [ "Cache-Control", "Content-Type", "x-requested-with", "Authorization", "Accept", "Accept-Encoding", "Accept-Language", "Access-Control-Request-Headers", "Access-Control-Request-Method", "Access-Control-Expose-Headers" ]
+
+
+mp:
+  jwt:
+    verify:
+      issuer: "osa.oracle.com"
+    token:
+      header: "Cookie"
+
+security:
+  jersey.analyzers:
+    mp-jwt-auth:
+      auth-method-mapping:
+        - key: "MP-JWT"
+          provider: "mp-jwt-auth"
+
+  providers:
+    - abac:
+    - mp-jwt-auth:
+        propagate: false
+        atn-token:
+          jwt-issuer: "osa.oracle.com"
+          jwt-audience: "audience.osa"
+          default-key-id: "verify-rsa"
+
+javax:
+  sql:
+    DataSource:
+      jdbc/OSADataSource:
+        connectionFactoryClassName: oracle.jdbc.pool.OracleDataSource
+        url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+        user: OSA_DEV_9abe76b3813333ae
+        password: Oracle_test_123

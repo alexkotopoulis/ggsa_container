@@ -4,6 +4,7 @@
 
 export HOST="${HOST:-ENTER_HOST_HERE}"
 export PASSWORD="${PASSWORD:-ENTER_PASSWORD_HERE}"
+export KAFKA_EXTERNAL_FQDN="${KAFKA_EXTERNAL_FQDN:-$HOST}"
 export SPARK_WORKER_INSTANCES="${SPARK_WORKER_INSTANCES:-2}"
 export SPARK_WORKER_CORES="${SPARK_WORKER_CORES:-8}"
 export SPARK_WORKER_MEMORY="${SPARK_WORKER_MEMORY:-2g}"
@@ -23,6 +24,7 @@ docker run -d \
   -p 9443:9443 \
   -p 19080:9080 \
   -p 9092:9092 \
+  -p 9094:9094 \
   -v ggsa-mysql:/var/lib/mysql \
   -v ggsa-kafka:/var/lib/kafka/data \
   -v ggsa-spark-events:/var/lib/spark-events \
@@ -34,6 +36,7 @@ docker run -d \
   -e OSA_ADMIN_USER=osaadmin \
   -e OSA_ADMIN_PASSWORD=$PASSWORD \
   -e OSA_PUBLIC_HOST=$HOST \
+  -e KAFKA_EXTERNAL_FQDN=$KAFKA_EXTERNAL_FQDN \
   -e SPARK_PUBLIC_DNS=$HOST \
   -e SPARK_WORKER_INSTANCES=$SPARK_WORKER_INSTANCES \
   -e SPARK_WORKER_CORES=$SPARK_WORKER_CORES \
