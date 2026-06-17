@@ -17,8 +17,9 @@ This project is intended for local development, demos, and sandboxing. It is not
   - Docker, or
   - Podman, including rootful Podman on Linux
 - An OSA distribution archive in the repository root
-  - `V1054826-01.zip` is one example filename
-  - patch releases may use a different filename
+  - Download the distribution archive from https://edelivery.oracle.com
+  - `V1054826-01.zip` is one example filename, patch releases may use a different filename. If the filename is different, edit Dockerfile and change ARG OSA_ARCHIVE=V1054826-01.zip to the correct name
+  - Place the downloaded zip file into the same directory as Dockerfile. Do not unpack the zip file. 
 - Enough memory for the full stack. OSA, Spark, Kafka, and MySQL together are heavy.
 
 ### Repository layout
